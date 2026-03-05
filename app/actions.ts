@@ -8,10 +8,17 @@ export async function createBooking(formData: FormData) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  const toolId = formData.get('toolId')
-  const userName = formData.get('userName')
-  const startDate = formData.get('startDate')
-  const endDate = formData.get('endDate')
+  // Wir holen die Daten und sagen TypeScript: "Das ist ein Text" (as string)
+  const toolId = formData.get('toolId') as string
+  const userName = formData.get('userName') as string
+  const startDate = formData.get('startDate') as string
+  const endDate = formData.get('endDate') as string
+
+  // Validierung: Nur speichern, wenn alles da ist
+  if (!toolId || !userName || !startDate || !endDate) {
+    console.error('Pflichtfelder fehlen')
+    return
+  }
 
   const { error } = await supabase.from('bookings').insert([
     { 
@@ -24,9 +31,9 @@ export async function createBooking(formData: FormData) {
 
   if (error) {
     console.error('Fehler beim Buchen:', error.message)
-    return
+    throw new Error(error.message)
   }
 
-  // Das sorgt dafür, dass die Seite sofort aktualisiert wird
+  // Seite aktualisieren
   revalidatePath('/')
 }

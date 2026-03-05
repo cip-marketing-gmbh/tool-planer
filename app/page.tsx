@@ -1,48 +1,45 @@
-export const revalidate = 0; // Das zwingt die Seite, jedes Mal neu zu laden
+export const revalidate = 0;
 import { createClient } from '@supabase/supabase-js'
 
 export default async function Home() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
-  // Kleiner Sicherheitscheck: Fehlen die Daten?
-  if (!supabaseUrl || !supabaseKey) {
-    return <div style={{ padding: '40px' }}>Fehler: Umgebungsvariablen fehlen bei Vercel!</div>
-  }
+  // 1. Daten laden (Tools und deren Buchungen)
+  const { data: tools } = await supabase.from('tools').select('*')
+  const { data: bookings } = await supabase.from('bookings').select('*')
 
-  const supabase = createClient(supabaseUrl, supabaseKey)
+  return (
+    <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto' }}>
+      <h1>📅 Tool-Planer</h1>
+      
+      {tools?.map((tool) => (
+        <div key={tool.id} style={{ border: '1px solid #ddd', padding: '15px', marginBottom: '20px', borderRadius: '8px' }}>
+          <h3>{tool.name} ({tool.category})</h3>
+          
+          <p><strong>Reservierungen:</strong></p>
+          <ul>
+            {bookings?.filter(b => b.tool_id === tool.id).length > 0 ? (
+              bookings?.filter(b => b.tool_id === tool.id).map(b => (
+                <li key={b.id}>
+                  {b.user_name}: {new Date(b.start_date).toLocaleDateString()} bis {new Date(b.end_date).toLocaleDateString()}
+                </li>
+              ))
+            ) : (
+              <li>Noch keine Buchungen</li>
+            )}
+          </ul>
 
-  try {
-    const { data: tools, error } = await supabase
-      .from('tools')
-      .select('*')
-
-    if (error) {
-      return (
-        <div style={{ padding: '40px' }}>
-          <h3>Supabase Fehlermeldung:</h3>
-          <pre>{JSON.stringify(error, null, 2)}</pre>
+          {/* Einfaches Buchungs-Formular (funktioniert über Server Actions oder API, aber hier als Demo-UI) */}
+          <div style={{ background: '#f9f9f9', padding: '10px', marginTop: '10px' }}>
+            <small>Neue Buchung (Demo-Ansicht):</small><br/>
+            <input type="date" /> bis <input type="date" />
+            <button style={{ marginLeft: '10px' }}>Buchen</button>
+          </div>
         </div>
-      )
-    }
-
-    return (
-      <div style={{ padding: '40px', fontFamily: 'sans-serif' }}>
-        <h1>🛠 Tool-Übersicht</h1>
-        <ul>
-          {tools?.map((tool) => (
-            <li key={tool.id}>{tool.name}</li>
-          ))}
-        </ul>
-      </div>
-    )
-  } catch (err: any) {
-    return (
-      <div style={{ padding: '40px' }}>
-        <h3>Technischer Fehler:</h3>
-        <p>{err.message}</p>
-        <p>Versuchte URL: {supabaseUrl}</p>
-      </div>
-    )
-  }
+      ))}
+    </div>
+  )
 }

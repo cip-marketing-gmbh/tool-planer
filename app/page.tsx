@@ -1,31 +1,37 @@
+// 1. Das ist der wichtigste Teil: Zwingt Next.js, die URL-Parameter (searchParams) zu lesen!
+export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
 import { createClient } from '@supabase/supabase-js'
 import { createBooking } from './actions'
 
 export default async function Home({ searchParams }: { searchParams: any }) {
+  // Wir warten explizit auf die searchParams (neuer Standard in Next.js)
+  const params = await searchParams;
+  const selectedToolId = params?.toolId;
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  // 1. Daten laden
+  // Daten laden
   const { data: tools } = await supabase.from('tools').select('*').order('name');
-  const selectedToolId = searchParams?.toolId;
   const selectedTool = tools?.find(t => t.id === selectedToolId);
 
   let toolBookings: any[] = []
   if (selectedToolId) {
-    const { data } = await supabase.from('bookings').select('*').eq('tool_id', selectedToolId)
+    const { data } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('tool_id', selectedToolId)
     toolBookings = data || []
   }
 
-  // Hilfsfunktionen
   const monate = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
   
   const getStatus = (day: number, month: number) => {
-    const year = 2026;
-    const date = new Date(year, month, day);
-    // Check ob Datum gültig (z.B. 31. Feb ausschließen)
+    const date = new Date(2026, month, day);
     if (date.getMonth() !== month) return "invalid";
     
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
@@ -44,47 +50,43 @@ export default async function Home({ searchParams }: { searchParams: any }) {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '1400px', margin: '0 auto' }}>
-      <h1 style={{ textAlign: 'center', color: '#1a202c' }}>🗓 Equipment Jahresplaner 2026</h1>
+      <h1 style={{ textAlign: 'center' }}>🗓 Equipment Planer 2026</h1>
 
-      {/* DROPDOWN BEREICH */}
+      {/* DROPDOWN - Absolut sicher programmiert */}
       <div style={{ marginBottom: '30px', textAlign: 'center', background: '#f7fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-        <form method="GET" action="/" style={{ display: 'flex', gap: '15px', justifyContent: 'center', alignItems: 'center' }}>
-          <label style={{ fontWeight: 'bold' }}>Gerät wählen:</label>
+        <form method="GET" action="/">
+          <label style={{ fontWeight: 'bold', marginRight: '10px' }}>Gerät wählen:</label>
           <select 
             name="toolId" 
-            key={selectedToolId} // Wichtig für React Refresh
-            defaultValue={selectedToolId || ""} 
-            style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e0', minWidth: '250px', fontSize: '1rem' }}
+            style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e0', minWidth: '250px' }}
           >
             <option value="">-- Bitte wählen --</option>
             {tools?.map(tool => (
-              <option key={tool.id} value={tool.id}>
+              <option 
+                key={tool.id} 
+                value={tool.id} 
+                selected={selectedToolId === tool.id}
+              >
                 {tool.name}
               </option>
             ))}
           </select>
-          <button type="submit" style={{ padding: '10px 25px', background: '#3182ce', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-            Kalender anzeigen
+          <button type="submit" style={{ marginLeft: '10px', padding: '10px 20px', background: '#3182ce', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
+            Kalender laden
           </button>
         </form>
       </div>
 
+      {/* KALENDER ANZEIGE */}
       {selectedToolId ? (
-        <div style={{ animation: 'fadeIn 0.3s ease-in' }}>
-          <h2 style={{ color: '#2b6cb0', marginBottom: '15px' }}>📍 Belegungsplan: {selectedTool?.name}</h2>
+        <div>
+          <h2 style={{ color: '#2b6cb0' }}>📍 Plan für: {selectedTool?.name || 'Unbekanntes Tool'}</h2>
           
-          {/* LEGENDE */}
-          <div style={{ display: 'flex', gap: '20px', marginBottom: '15px', fontSize: '0.85rem' }}>
-             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{ width: '15px', height: '15px', background: '#fc8181', border: '1px solid #e53e3e' }}></div> Belegt</div>
-             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{ width: '15px', height: '15px', background: '#edf2f7', border: '1px solid #cbd5e0' }}></div> Wochenende</div>
-          </div>
-
-          {/* GROSSE TABELLEN-ANSICHT */}
-          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', marginTop: '20px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'white', fontSize: '11px' }}>
               <thead>
                 <tr style={{ background: '#edf2f7' }}>
-                  <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left', minWidth: '80px' }}>Monat</th>
+                  <th style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'left' }}>Monat</th>
                   {Array.from({ length: 31 }, (_, i) => (
                     <th key={i} style={{ padding: '5px', border: '1px solid #e2e8f0', width: '30px' }}>{i + 1}</th>
                   ))}
@@ -96,22 +98,14 @@ export default async function Home({ searchParams }: { searchParams: any }) {
                     <td style={{ padding: '8px', border: '1px solid #e2e8f0', fontWeight: 'bold', background: '#f8fafc' }}>{monat}</td>
                     {Array.from({ length: 31 }, (_, dIdx) => {
                       const status = getStatus(dIdx + 1, mIdx);
-                      
                       let bgColor = 'transparent';
                       if (status === 'invalid') bgColor = '#f7fafc';
                       if (status === 'weekend') bgColor = '#edf2f7';
                       if (status === 'booked') bgColor = '#fc8181';
 
                       return (
-                        <td key={dIdx} style={{
-                          border: '1px solid #e2e8f0',
-                          padding: '0',
-                          backgroundColor: bgColor,
-                          height: '35px',
-                          textAlign: 'center',
-                          color: status === 'booked' ? 'white' : '#718096'
-                        }}>
-                          {status !== 'invalid' && (dIdx + 1)}
+                        <td key={dIdx} style={{ border: '1px solid #e2e8f0', backgroundColor: bgColor, height: '30px', textAlign: 'center' }}>
+                          {status !== 'invalid' ? (dIdx + 1) : ''}
                         </td>
                       );
                     })}
@@ -121,36 +115,24 @@ export default async function Home({ searchParams }: { searchParams: any }) {
             </table>
           </div>
 
-          {/* BUCHUNGS-FORMULAR UNTER DEM KALENDER */}
-          <div style={{ marginTop: '40px', background: '#fff', padding: '25px', borderRadius: '12px', border: '2px solid #3182ce', maxWidth: '500px' }}>
-            <h3 style={{ marginTop: 0, color: '#2c5282' }}>Neue Reservierung eintragen</h3>
-            <form action={createBooking} style={{ display: 'grid', gap: '15px' }}>
+          {/* BUCHUNGS-FORMULAR */}
+          <div style={{ marginTop: '30px', background: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #3182ce', maxWidth: '400px' }}>
+            <h3 style={{ marginTop: 0 }}>Reservieren</h3>
+            <form action={createBooking} style={{ display: 'grid', gap: '10px' }}>
               <input type="hidden" name="toolId" value={selectedToolId} />
-              <div>
-                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Wer reserviert?</label>
-                <input name="userName" placeholder="Dein Name" required style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e0' }} />
-              </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Von</label>
-                  <input type="date" name="startDate" required style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e0' }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Bis</label>
-                  <input type="date" name="endDate" required style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e0' }} />
-                </div>
-              </div>
-              <button type="submit" style={{ padding: '12px', background: '#3182ce', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-                Jetzt buchen
+              <input name="userName" placeholder="Dein Name" required style={{ padding: '8px' }} />
+              <input type="date" name="startDate" required style={{ padding: '8px' }} />
+              <input type="date" name="endDate" required style={{ padding: '8px' }} />
+              <button type="submit" style={{ padding: '10px', background: '#3182ce', color: 'white', border: 'none', borderRadius: '6px' }}>
+                Speichern
               </button>
             </form>
           </div>
         </div>
       ) : (
-        <div style={{ textAlign: 'center', marginTop: '100px', color: '#a0aec0' }}>
-          <div style={{ fontSize: '4rem' }}>🏗️</div>
-          <h2>Bereit zum Planen?</h2>
-          <p>Wähle oben ein Gerät aus, um die Jahresübersicht zu laden.</p>
+        <div style={{ textAlign: 'center', marginTop: '50px', color: '#a0aec0', border: '2px dashed #eee', padding: '40px' }}>
+          <h3>Kein Gerät ausgewählt</h3>
+          <p>Wähle oben ein Tool und klicke auf "Kalender laden".</p>
         </div>
       )}
     </div>

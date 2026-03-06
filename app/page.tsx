@@ -23,12 +23,12 @@ export default function Home() {
 
   // Tools beim Start laden
   useEffect(() => {
-    supabase.from('tools').select('*').order('name').then(({ data }) => setTools(data || []));
+    supabase.from('tool-planner-tools').select('*').order('name').then(({ data }) => setTools(data || []));
   }, []);
 
   // Buchungen laden (Funktion extrahiert, damit wir sie nach dem Buchen neu aufrufen können)
   const fetchBookings = async (id: string) => {
-    const { data } = await supabase.from('bookings').select('*').eq('tool_id', id);
+    const { data } = await supabase.from('tool-planner-bookings').select('*').eq('tool_id', id);
     setBookings(data || []);
   };
 
